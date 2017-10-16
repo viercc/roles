@@ -11,10 +11,10 @@ Composable, class-based roles.
     * [Roles to the rescue](#roles)
   * [The `roles` library](#library)
     * [What problem does this library solve?](#what-problems)
-    * [How can I use this library?](#how)
+    * [How can I use this library?](#how-can-i)
     * [History](#history)
 
-# What is the cost of a `newtype`?
+# What is the cost of a `newtype`? <a name="what-is-the-cost"></a>
 
 The conventional wisdom is that Haskell's `newtype` gives you a zero-cost
 abstraction--wrapping and unwrapping of `newtype`s are purely a compile-time
@@ -37,11 +37,11 @@ maybeName = fmap name
 
 See the POPL '11 paper [Generative Type Abstraction and Type-level Computation](http://www.seas.upenn.edu/~sweirich/papers/popl163af-weirich.pdf) for a more
 through investigation of the problem and a solution, and the ICFP '14 paper [Safe Zero-cost Coercions for Haskell](http://cs.brynmawr.edu/~rae/papers/2014/coercible/coercible-ext.pdf) for
-implementation of the `Coercible` typeclass in Haskell.
+implementation of the `Coercible` typeclass in Haskell. Still more information can be found [on the Haskell wiki](https://ghc.haskell.org/trac/ghc/wiki/Roles).
 
-# Background
+# Background <a name="background"></a>
 
-## The magical `Coercible` class
+## The magical `Coercible` class <a name="magical"></a>
 
 The solution described in the second paper was to introduce a typeclass `Coercible a b` of the
 form
@@ -59,7 +59,7 @@ if  `MkNew` is not exported, then *outside* of the module we should *not* be abl
 `coerce` between `New` and `Old`. As a result, the `Coercible` class must involve special
 compiler magic to ensure that `coerce` is only available in the appropriate modules.
 
-## Lifting coercions
+## Lifting coercions <a name="lifting"></a>
 
 Let's revisit the `maybeName` issue. Ideally, we would like to rewrite the example
 to make the coercions explicit, to guarantee zero runtime cost:
@@ -96,12 +96,12 @@ If GHC naively added the coercion lifting rule, then we would be able to
 coerce from `Double` to `Int` by:
 
 ```haskell
-Coercible User String => Coercible (Fam User) (Fam String) -- a.k.a. Coercible Int Double!
+Coercible User String => Coercible (Fam User) (Fam String) -- a.k.a. Coercible Double Int!
 ```
 
 This is obviously no good.
 
-## Roles to the rescue
+## Roles to the rescue <a name="roles"></a>
 
 It seems that sometimes we can lift a `Coercion a b` to a `Coercion (f a) (f b)`
 (e.g. for `Maybe`) and sometimes we cannot (e.g. for `Fam`). To figure out when
@@ -115,9 +115,9 @@ Happily, GHC will infer that `Maybe`'s type parameter is representational, while
 pass the compiler, while attempting to coerce an `Int` to a `Double` via
 `Fam` will fail.
 
-# The `roles` library
+# The `roles` library <a name="library"></a>
 
-## What problem does this library solve?
+## What problem does this library solve? <a name="what-problem"></a>
 
 Unfortunately, in GHC Haskell there is currently (circa late 2017) no way to
 write something like this:
@@ -145,7 +145,7 @@ role."
 This library simply provides the `Representational` typeclass for a variety of
 types in `base` and `containers`.
 
-## How can I use this library?
+## How can I use this library? <a name="how-can-i"></a>
 
 Since it is not made up of GHC pixie-dust magic, `Representational` needs a way to
 convince GHC that the lifted coercion is allowed.
@@ -187,7 +187,7 @@ of `newtype`-related manipulations. An earlier version of `withRecMap` worked by
 `fmap`ping newtype wrappers and unwrappers, which caused an accidental duplication
 of the map.
 
-## History
+## History <a name="history"></a>
 
 This package is a fork of Edward Kmett's original `roles 0.1`. It offers
 fewer instances of `Representational`, in exchange for a much smaller set

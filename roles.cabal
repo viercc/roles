@@ -16,7 +16,7 @@ build-type:    Custom
 extra-source-files:
   .vim.custom
   CHANGELOG.markdown
-  README.markdown
+  README.md
 
 source-repository head
   type: git

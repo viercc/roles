@@ -18,6 +18,7 @@ import Data.Type.Coercion
 import Data.Coerce
 import Unsafe.Coerce
 import Data.Map
+import Data.IntMap
 
 class Representational (t :: k1 -> k2) where
   -- | An argument is representational if you can lift a coercion of the argument into one of the whole
@@ -85,8 +86,9 @@ instance Representational Maybe   where rep Coercion = Coercion
 instance Representational IO      where rep Coercion = Coercion
 instance Representational (ST s)  where rep Coercion = Coercion
 
--- * Data.Map
+-- * containers
 instance Representational (Map k) where rep Coercion = Coercion
+instance Representational IntMap  where rep Coercion = Coercion
 
 -- * Data.Complex
 

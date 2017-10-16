@@ -10,7 +10,7 @@ Composable, class-based roles.
     * [Lifting coercions](#lifting)
     * [Roles to the rescue](#roles)
   * [The `roles` library](#library)
-    * [What problem does this library solve?](#what-problems)
+    * [What problem does this library solve?](#what-problem)
     * [How can I use this library?](#how-can-i)
     * [History](#history)
 

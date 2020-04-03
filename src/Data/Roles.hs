@@ -11,17 +11,19 @@ module Data.Roles
   ) where
 
 import           Control.Applicative
+import           Control.Category((>>>))
 import           Control.Monad.ST (ST)
 
 import           Data.Complex
 import           Data.Monoid
 import           Data.Semigroup
 
-import           Data.Coerce
+import           Data.Proxy
+
 import           Data.IntMap
 import           Data.Map
 
-import           Data.Proxy
+import           Data.Coerce
 import           Data.Type.Coercion
 import           Unsafe.Coerce
 
@@ -36,6 +38,21 @@ class Representational t => Phantom (t :: k1 -> k2) where
   phantom :: Coercion (t a) (t b)
   default phantom :: Coercible (t a) (t b) => Coercion (t a) (t b)
   phantom = Coercion
+
+wrapped :: forall x y proxy (f :: x -> y) (g :: x -> y) (a :: x) (b :: x).
+           (Coercible f g) => proxy f g ->  Coercion (f a) (f b) -> Coercion (g a) (g b)
+wrapped _ c = (Coercion :: Coercion (g a) (f a)) >>> c >>> (Coercion :: Coercion (f b) (g b))
+
+data P a b = P
+data X a = X
+
+(//) ::  p (f a) (g a) -> q a -> P f g
+_ // _ = P
+
+infixl 8 //
+
+eta :: forall f g a. Coercion f g -> Coercion (f a) (g a)
+eta Coercion = Coercion
 
 -- * Data.Proxy
 
@@ -91,6 +108,20 @@ instance Representational Maybe   where rep Coercion = Coercion
 instance Representational IO      where rep Coercion = Coercion
 instance Representational (ST s)  where rep Coercion = Coercion
 
+-- * Control.Applicative
+
+instance Representational ZipList where rep Coercion = Coercion
+
+instance Representational WrappedMonad where rep Coercion = Coercion
+instance Representational m => Representational (WrappedMonad m) where
+  rep c = wrapped (WrapMonad // X) (rep c)
+
+instance Representational WrappedArrow where rep Coercion = Coercion
+instance (Representational p) => Representational (WrappedArrow p) where
+  rep c = wrapped (WrapArrow // X // X) (rep c)
+instance (Representational (p a)) => Representational (WrappedArrow p a) where
+  rep c = wrapped (WrapArrow // X) (rep c)
+
 -- * Data.Complex
 
 instance Representational Complex where rep Coercion = Coercion
@@ -113,9 +144,7 @@ instance Representational WrappedMonoid        where rep Coercion = Coercion
 
 instance Representational Ap                  where rep Coercion = Coercion
 instance Representational f => Representational (Ap f) where
-  rep :: forall a b. Coercion a b -> Coercion (Ap f a) (Ap f b)
-  rep c = case rep c :: Coercion (f a) (f b) of
-    Coercion -> Coercion
+  rep c = wrapped (Ap // X) (rep c)
 
 instance Representational Data.Monoid.First   where rep Coercion = Coercion
 instance Representational Data.Monoid.Last    where rep Coercion = Coercion

@@ -1,6 +1,6 @@
 name:          roles
 category:      Data
-version:       0.2.0.0
+version:       0.3.0.0
 license:       BSD3
 cabal-version: >= 1.8
 license-file:  LICENSE
@@ -12,9 +12,8 @@ bug-reports:   http://github.com/matt-noonan/roles/issues
 copyright:     Copyright (C) 2017 Matt Noonan, (C) 2014 Edward A. Kmett
 synopsis:      Composable class-based roles
 description:   Composable class-based roles
-build-type:    Custom
+build-type:    Simple
 extra-source-files:
-  .vim.custom
   CHANGELOG.markdown
   README.md
 
@@ -23,10 +22,12 @@ source-repository head
   location: git://github.com/matt-noonan/roles.git
 
 library
-  build-depends:    base >= 4.7 && < 5
+  build-depends:    base >= 4.12 && < 5
+                  , transformers
+                  , mtl
                   , containers
-
+  
   exposed-modules:  Data.Roles
 
-  ghc-options: -Wall -fwarn-tabs -O2
+  ghc-options: -Wall -Wcompat -fwarn-tabs
   hs-source-dirs: src

@@ -8,6 +8,13 @@
 module Data.Roles
   ( Representational(rep)
   , Phantom(phantom)
+  
+  -- * Utility functions to define Representable easily
+  , Proxy2(..)
+  , wrapped
+  , slash
+  , coercionOf
+  , eta
   ) where
 
 import           Control.Applicative
@@ -28,6 +35,17 @@ import qualified Data.Functor.Sum      as F
 import           Data.IntMap
 import           Data.Map
 
+import Control.Monad.Reader      (ReaderT(..))
+import Control.Monad.Except      (ExceptT(..), runExceptT)
+import Control.Monad.Cont        (ContT(..))
+import Control.Monad.Trans.Maybe (MaybeT(..))
+import qualified Control.Monad.Writer.Lazy   as L (WriterT(..), runWriterT)
+import qualified Control.Monad.Writer.Strict as S (WriterT(..), runWriterT)
+import qualified Control.Monad.State.Lazy    as L (StateT(..), runStateT)
+import qualified Control.Monad.State.Strict  as S (StateT(..), runStateT)
+import qualified Control.Monad.RWS.Lazy      as L (RWST(..), runRWST)
+import qualified Control.Monad.RWS.Strict    as S (RWST(..), runRWST)
+
 import           Data.Coerce
 import           Data.Type.Coercion
 import           Unsafe.Coerce
@@ -45,16 +63,16 @@ class Representational t => Phantom (t :: k1 -> k2) where
   phantom = Coercion
 
 wrapped :: forall x y proxy (f :: x -> y) (g :: x -> y) (a :: x) (b :: x).
-           (Coercible f g) => proxy f g ->  Coercion (f a) (f b) -> Coercion (g a) (g b)
+           (Coercible f g) => proxy f g -> Coercion (f a) (f b) -> Coercion (g a) (g b)
 wrapped _ c = (Coercion :: Coercion (g a) (f a)) >>> c >>> (Coercion :: Coercion (f b) (g b))
 
-data P a b = P
-data X a = X
+data Proxy2 a b = Proxy2
 
-(//) ::  p (f a) (g a) -> q a -> P f g
-_ // _ = P
+slash ::  proxy (f a) (g a) -> Proxy2 f g
+slash _ = Proxy2
 
-infixl 8 //
+coercionOf :: Coercible a b => proxy a b -> Coercion a b
+coercionOf _ = Coercion
 
 eta :: forall f g a. Coercion f g -> Coercion (f a) (g a)
 eta Coercion = Coercion
@@ -82,10 +100,7 @@ instance Representational Compose where rep Coercion = Coercion
 instance (Representational f,
           Representational g)
       => Representational (Compose f g) where
-  rep :: forall a b. Coercion a b -> Coercion (Compose f g a) (Compose f g b)
-  rep c = (Coercion :: Coercion (Compose f g a) (f (g a))) >>>
-          rep (rep c) >>>
-          (Coercion :: Coercion (f (g b)) (Compose f g b))
+  rep c = coercionOf getCompose >>> rep (rep c) >>> coercionOf Compose
 
 -- * Data.Type.Coercion
 
@@ -136,13 +151,13 @@ instance Representational ZipList where rep Coercion = Coercion
 
 instance Representational WrappedMonad where rep Coercion = Coercion
 instance Representational m => Representational (WrappedMonad m) where
-  rep c = wrapped (WrapMonad // X) (rep c)
+  rep c = wrapped (slash WrapMonad) (rep c)
 
 instance Representational WrappedArrow where rep Coercion = Coercion
 instance (Representational p) => Representational (WrappedArrow p) where
-  rep c = wrapped (WrapArrow // X // X) (rep c)
+  rep c = wrapped (slash (slash WrapArrow)) (rep c)
 instance (Representational (p a)) => Representational (WrappedArrow p a) where
-  rep c = wrapped (WrapArrow // X) (rep c)
+  rep c = wrapped (slash WrapArrow) (rep c)
 
 -- * Data.Complex
 
@@ -166,7 +181,7 @@ instance Representational WrappedMonoid        where rep Coercion = Coercion
 
 instance Representational Ap                  where rep Coercion = Coercion
 instance Representational f => Representational (Ap f) where
-  rep c = wrapped (Ap // X) (rep c)
+  rep c = wrapped (slash Ap) (rep c)
 
 instance Representational Data.Monoid.First   where rep Coercion = Coercion
 instance Representational Data.Monoid.Last    where rep Coercion = Coercion
@@ -174,3 +189,56 @@ instance Representational Data.Monoid.Last    where rep Coercion = Coercion
 -- * containers
 instance Representational (Map k) where rep Coercion = Coercion
 instance Representational IntMap  where rep Coercion = Coercion
+
+-- * mtl, transformers
+instance Representational ReaderT     where rep Coercion = Coercion
+instance Representational (ReaderT r) where rep Coercion = Coercion
+instance (Representational m)
+      => Representational (ReaderT r m) where
+  rep c = coercionOf runReaderT >>> rep (rep c) >>> coercionOf ReaderT
+
+instance (Representational m)
+      => Representational (ExceptT e m) where
+  rep c = coercionOf runExceptT >>> rep (rep c) >>> coercionOf ExceptT
+
+instance Representational (ContT r)   where rep Coercion = Coercion
+instance Representational (ContT r m) where rep Coercion = Coercion
+
+instance Representational MaybeT where rep Coercion = Coercion
+instance (Representational m)
+      => Representational (MaybeT m) where
+  rep c = coercionOf runMaybeT >>> rep (rep c) >>> coercionOf MaybeT
+
+firstR :: Coercion a b -> Coercion (a,c) (b,c)
+firstR = eta . rep
+
+instance (Representational m)
+      => Representational (L.WriterT w m) where
+  rep c = coercionOf L.runWriterT >>> rep (firstR c) >>> coercionOf L.WriterT
+
+instance (Representational m)
+      => Representational (S.WriterT w m) where
+  rep c = coercionOf S.runWriterT >>> rep (firstR c) >>> coercionOf S.WriterT
+
+instance (Representational m)
+      => Representational (L.StateT s m) where
+  rep c = coercionOf L.runStateT >>> rep (rep (firstR c)) >>> coercionOf L.StateT
+
+instance (Representational m)
+      => Representational (S.StateT s m) where
+  rep c = coercionOf S.runStateT >>> rep (rep (firstR c)) >>> coercionOf S.StateT
+
+instance Representational L.RWST where rep Coercion = Coercion
+instance (Representational m)
+      => Representational (L.RWST e w s m) where
+  --                                     c :: a ~R b
+  --                               rep $ c :: (,,) a ~R (,,) b
+  --                   eta . eta . rep $ c :: (a,w,s) ~R (b,w,s)
+  --             rep . eta . eta . rep $ c :: m (a,w,s) ~R m (b,w,s)
+  -- rep . rep . rep . eta . eta . rep $ c :: e -> s -> m (a,w,s) ~R e -> s -> m (b,w,s)
+  rep c = coercionOf L.runRWST >>> (rep . rep . rep . eta . eta . rep) c >>> coercionOf L.RWST
+
+instance Representational S.RWST where rep Coercion = Coercion
+instance (Representational m)
+      => Representational (S.RWST e w s m) where
+  rep c = coercionOf S.runRWST >>> (rep . rep . rep . eta . eta . rep) c >>> coercionOf S.RWST

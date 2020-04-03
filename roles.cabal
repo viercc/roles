@@ -24,6 +24,7 @@ source-repository head
 library
   build-depends:    base >= 4.12 && < 5
                   , transformers
+                  , mtl
                   , containers
   
   exposed-modules:  Data.Roles

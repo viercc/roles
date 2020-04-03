@@ -11,14 +11,19 @@ module Data.Roles
   ) where
 
 import           Control.Applicative
-import           Control.Category((>>>))
-import           Control.Monad.ST (ST)
+import           Control.Category      ((>>>))
+import           Control.Monad.ST      (ST)
 
 import           Data.Complex
 import           Data.Monoid
 import           Data.Semigroup
 
 import           Data.Proxy
+
+import           Data.Functor.Identity
+import           Data.Functor.Compose
+import qualified Data.Functor.Product  as F
+import qualified Data.Functor.Sum      as F
 
 import           Data.IntMap
 import           Data.Map
@@ -59,11 +64,28 @@ eta Coercion = Coercion
 instance Representational Proxy
 instance Phantom Proxy
 
--- * Const
+-- * Data.Functor.{Const, Identity, Sum, Product, Compose}
 
 instance Representational Const where rep Coercion = Coercion
 instance Representational (Const a)
 instance Phantom (Const a)
+
+instance Representational Identity where rep Coercion = Coercion
+
+instance Representational F.Sum     where rep Coercion = Coercion
+instance Representational (F.Sum f) where rep Coercion = Coercion
+
+instance Representational F.Product where rep Coercion = Coercion
+instance Representational (F.Product f) where rep Coercion = Coercion
+
+instance Representational Compose where rep Coercion = Coercion
+instance (Representational f,
+          Representational g)
+      => Representational (Compose f g) where
+  rep :: forall a b. Coercion a b -> Coercion (Compose f g a) (Compose f g b)
+  rep c = (Coercion :: Coercion (Compose f g a) (f (g a))) >>>
+          rep (rep c) >>>
+          (Coercion :: Coercion (f (g b)) (Compose f g b))
 
 -- * Data.Type.Coercion
 

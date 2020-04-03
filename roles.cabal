@@ -29,4 +29,3 @@ library
 
   ghc-options: -Wall -Wcompat -fwarn-tabs
   hs-source-dirs: src
-
